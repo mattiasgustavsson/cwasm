@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en-us">
+<head>
+<meta charset="utf-8">
+<title>{{{title}}}</title>
+<link id="favicon" rel="shortcut icon" type="image/png" href="data:image/png;base64,{{{favicon}}}">
+<meta name="apple-mobile-web-app-title" content="{{{title}}}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" type="image/png" href="data:image/png;base64,{{{iosicon}}}">
+
+<style type="text/css">
+html, body {
+    margin: 0;
+    padding: 0;
+    background: black;
+    color: white;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* Layout size is CSS. The runtime keeps the canvas backing store (OffscreenCanvas in the
+   worker, or the canvas itself single-threaded) synced to clientWidth/Height. Guests read
+   CWASM.canvas.width/height for the viewport. */
+#wasm_canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: black;
+    outline: 0;
+    touch-action: none;
+}
+
+#loading {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    top: 0;
+    bottom: 0;
+    margin-top: auto;
+    margin-bottom: auto;
+    width: 300px;
+    height: 200px;
+    font-size: 1.5em;
+    font-weight: bold;
+    text-align: center;
+    pointer-events: none;
+}
+
+</style>
+</head>
+<body>
+<canvas id="wasm_canvas" tabindex="0" onclick="window.focus(); wasm_canvas.focus();" oncontextmenu="event.preventDefault()" width="1440" height="1080"></canvas>
+<div id="loading">Loading...</div>
+<script>
+var wasm_canvas = document.getElementById('wasm_canvas');
+wasm_canvas.addEventListener('mousedown', ()=>{ window.focus(); wasm_canvas.focus({preventScroll:true}); });
+var CWASM = {
+    onStarted: function () {
+        document.getElementById('loading').style.display = 'none';
+        window.focus();
+        wasm_canvas.focus({ preventScroll: true });
+    },
+};
+{{{js}}}
+</script>
+</body>
+</html>

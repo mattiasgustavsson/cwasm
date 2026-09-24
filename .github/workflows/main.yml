@@ -1,0 +1,28 @@
+# Build check. Linux builds the full SDK; Windows/macOS only have to build the cwasm
+# binary (with MSVC / Apple clang -- the publish workflow covers the pinned clang path).
+name: build
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build full SDK
+        run: ./build.sh
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build cwasm (MSVC)
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do call "%%i\VC\Auxiliary\Build\vcvars64.bat"
+          cl src\cwasm.c
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build cwasm (clang)
+        run: clang -O2 -o cwasm src/cwasm.c

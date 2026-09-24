@@ -1,0 +1,103 @@
+# Publish. Triggered by publishing a release by hand: Linux builds the platform-independent
+# sysroot once, each platform job adds its host tools and attaches its SDK archive to the
+# release. First-party actions and the preinstalled gh CLI only.
+name: publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  build-sysroot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build sysroot
+        run: ./build.sh sysroot
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sysroot
+          path: dist/
+          if-no-files-found: error
+
+  publish-linux:
+    needs: build-sysroot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sysroot
+          path: dist/
+      - name: build and package
+        run: ./build.sh native
+      - name: upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" cwasm-*.tar.gz --clobber
+
+  publish-windows:
+    needs: build-sysroot
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sysroot
+          path: dist/
+      - name: build and package
+        shell: bash
+        run: ./build.sh native
+      - name: upload to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" cwasm-*.zip --clobber
+
+  publish-macos:
+    needs: build-sysroot
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sysroot
+          path: dist/
+      - name: build and package
+        run: ./build.sh native
+      - name: upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" cwasm-*.tar.gz --clobber
+
+  publish-macos-intel:
+    needs: build-sysroot
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sysroot
+          path: dist/
+      - name: build and package
+        run: ./build.sh native
+      - name: upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" cwasm-*.tar.gz --clobber
+
+  cleanup:
+    needs: [publish-linux, publish-windows, publish-macos, publish-macos-intel]
+    runs-on: ubuntu-latest
+    steps:
+      - name: delete sysroot artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" \
+            --jq '.artifacts[] | select(.name=="sysroot") | .id' |
+          xargs -r -n1 -I{} gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/{}"
